@@ -11,37 +11,42 @@ class QueryLoggerServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        /*
-         * Optional methods to load your package assets
-         */
-        // $this->loadTranslationsFrom(__DIR__.'/../resources/lang', 'querylogger');
-        // $this->loadViewsFrom(__DIR__.'/../resources/views', 'querylogger');
-        // $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        // $this->loadRoutesFrom(__DIR__.'/routes.php');
-
-        if ($this->app->runningInConsole()) {
-            $this->publishes([
-                __DIR__.'/../config/config.php' => config_path('querylogger.php'),
-            ], 'config');
-
-            // Publishing the views.
-            /*$this->publishes([
-                __DIR__.'/../resources/views' => resource_path('views/vendor/querylogger'),
-            ], 'views');*/
-
-            // Publishing assets.
-            /*$this->publishes([
-                __DIR__.'/../resources/assets' => public_path('vendor/querylogger'),
-            ], 'assets');*/
-
-            // Publishing the translation files.
-            /*$this->publishes([
-                __DIR__.'/../resources/lang' => resource_path('lang/vendor/querylogger'),
-            ], 'lang');*/
-
-            // Registering package commands.
-            // $this->commands([]);
+        if (env('APP_DEBUG', false)) {
+            $this->startQueryLogger();
         }
+    }
+
+
+    private function startQueryLogger()
+    {
+        \Event::listen(
+            'illuminate.query',
+            function ( $query, $bindings, $time, $name ) {
+                $data = compact( 'bindings', 'time', 'name' );
+
+                // Format binding data for sql insertion
+                foreach ($bindings as $i => $binding) {
+                    if (is_object( $binding ) && $binding instanceof \DateTime) {
+                        $bindings[ $i ] = '\'' . $binding->format( 'Y-m-d H:i:s' ) . '\'';
+                    } elseif (is_null( $binding )) {
+                        $bindings[ $i ] = 'NULL';
+                    } elseif (is_bool( $binding )) {
+                        $bindings[ $i ] = $binding ? '1' : '0';
+                    } elseif (is_string( $binding )) {
+                        $bindings[ $i ] = "'$binding'";
+                    }
+                }
+
+                $query = preg_replace_callback(
+                    '/\?/',
+                    function () use ( &$bindings ) {
+                        return array_shift( $bindings );
+                    }, $query
+                );
+
+                \Log::info( $query, $data );
+            }
+        );
     }
 
     /**
@@ -50,7 +55,7 @@ class QueryLoggerServiceProvider extends ServiceProvider
     public function register()
     {
         // Automatically apply the package configuration
-        $this->mergeConfigFrom(__DIR__.'/../config/config.php', 'querylogger');
+        $this->mergeConfigFrom(__DIR__ . '/../config/config.php', 'querylogger');
 
         // Register the main class to use with the facade
         $this->app->singleton('querylogger', function () {
