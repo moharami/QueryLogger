@@ -25,7 +25,7 @@ class QueryLogger
                 if (!empty($data->bindings)) {
                     $data->sql = vsprintf(str_replace('?', "'%s'", $data->sql), $data->bindings);
                 }
-                file_put_contents($this->file_path, $data->sql . "\n", FILE_APPEND);
+                file_put_contents($this->file_path, $data->sql . ";" . "\n"  , FILE_APPEND);
             }
         );
     }
