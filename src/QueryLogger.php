@@ -49,10 +49,9 @@ class QueryLogger
             $this->total_query++;
             $this->total_time += $data->time;
             $this->addQuery($data);
-        dump($this->queries);
+            $this->addMeta();
+            $this->write();
         });
-//        $this->addMeta();
-//        $this->write();
     }
 
     /**
@@ -65,7 +64,7 @@ class QueryLogger
     {
         $queryStr = $this->getSqlWithBindings($query);
         $time = $query->time;
-        $this->queries[] = [
+        $this->data['queries'] = [
             'sl' => $this->total_query,
             'query' => $query->sql,
             'bindings' => $query->bindings,
@@ -94,7 +93,7 @@ class QueryLogger
             'url' => request()->url(),
             'method' => request()->method(),
             'total_query' => $this->total_query,
-            'total_time' => $this->total_time
+            'total_time' => $this->total_time,
         ];
 //        app()->terminating(function () {
 //
